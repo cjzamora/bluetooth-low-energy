@@ -33,9 +33,7 @@ var BLECentral = function() {
                     // initialize it
                     bluetoothle.initialize(function(response) {
                         callback.call(self, response);
-                    }, function(response) {
-                        callback.call(self, response);
-                    });
+                    }, { request : true });
                 } else {
                     callback.call(self, { status: 'enabled' });
                 }
@@ -56,9 +54,7 @@ var BLECentral = function() {
                         if(response.requestLocation) {
                             callback.call(self, response);
                         }
-                    }, function(response) {
-                        callback.call(self, response);
-                    });
+                    }, { request : true });
                 } else {
                     callback.call(self, { 'requestLocation' : true });
                 }
