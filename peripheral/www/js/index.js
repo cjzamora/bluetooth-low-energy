@@ -58,7 +58,7 @@ var app = {
         peripheral = BLEPeripheral();
 
         // init advertise
-        setTimeout(app.advertise.bind(app), 5000);
+        var advertise = setInterval(app.advertise.bind(app), 20000);
 
         // on debug
         peripheral.onDebug(function(message) {
@@ -80,12 +80,25 @@ var app = {
                 app.updateCentralList(central);
             }
 
+            // if we are connected
+            if(response.status === 'connected') {
+                // stop advertising this device
+                clearInterval(advertise);
+            }
+
+
             // disconnection?
             if(response.status === 'disconnected') {
                 central = {};
 
                 // update list
                 app.updateCentralList(central);
+
+                // restart interval
+                clearInterval(advertise);
+
+                // start interval
+                advertise = setInterval(app.advertise.bind(app), 20000);
             }
         });
     },
@@ -104,11 +117,6 @@ var app = {
         }, function(response) {
             log('Error occur while advertising device: ' + response.message);
         });
-
-        // re-advertise
-        setTimeout(function() {
-            app.advertise();
-        }, 20000);
     },  
 
     // update central list
