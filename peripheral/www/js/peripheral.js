@@ -37,7 +37,11 @@ var BLEPeripheral = function() {
 
         // init bluetooth
         initBluetooth: function(callback) {
-            var self = this;
+            var self  = this;
+            var param = {
+                'request'     : true,
+                'restoreKey'  : 'bleplugin'
+            };
 
             // bluetooth enabled?
             bluetoothle.isEnabled(function(response) {
@@ -46,7 +50,7 @@ var BLEPeripheral = function() {
                     // initialize it
                     bluetoothle.initialize(function(response) {
                         callback.call(self, response);
-                    }, { request : true });
+                    }, param);
                 } else {
                     callback.call(self, { status: 'enabled' });
                 }
@@ -55,7 +59,11 @@ var BLEPeripheral = function() {
 
         // init location
         initLocation: function() {
-            var self = this;
+            var self  = this;
+            var param = { 
+                'request'     : true, 
+                'restoreKey'  : 'bleplugin' 
+            };
 
             // is location enabled?
             bluetoothle.isLocationEnabled(function(response) {
@@ -67,7 +75,7 @@ var BLEPeripheral = function() {
                         if(response.requestLocation) {
                             callback.call(self, response);
                         }
-                    }, { request : true });
+                    }, param);
                 } else {
                     callback.call(self, { 'requestLocation' : true });
                 }
@@ -216,9 +224,11 @@ var BLEPeripheral = function() {
 
                     // error?
                     if(response.error) {
-                        this.debug('Unable to initialize service: ' + response.message);
+                        this.debug('Service already initialized.');
 
-                        errorCallback.call(this, response);
+                        // maybe the service is already there?
+                        // then let's advertise again.
+                        initAdvertise.apply(this);
                     }
                 });
             };
@@ -242,6 +252,25 @@ var BLEPeripheral = function() {
                     }
                 });
             };
+        },
+
+        // notify to subscribed device
+        notify : function(data, successCallback, errorCallback) {
+            var self    = this;
+            // convert to bytes
+            var bytes   = bluetoothle.stringToBytes(data.value);
+            // encode bytes
+            var encoded = bluetoothle.bytesToEncodedString(bytes);
+
+            // set data value
+            data.value = encoded;
+
+            // send notify request
+            bluetoothle.notify(function(response) {
+                successCallback.call(self, response);
+            }, function(response) {
+                errorCallback.call(self, response);
+            }, data);
         },
 
         // debug helper

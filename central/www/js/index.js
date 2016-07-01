@@ -62,8 +62,22 @@ var app = {
             log(message);
         });
 
+        // on subscribe notify
+        central.onSubscribe(function(response) {
+            if(response.status === 'subscribedResult') {
+                // get encoded data
+                var bytes  = bluetoothle.encodedStringToBytes(response.value);
+                // get the string
+                var string = bluetoothle.bytesToString(bytes);
+
+                log('Notify: ' + string);
+
+                alert(string);
+            }
+        });
+
         // start scanning for peripherals
-        setTimeout(app.scan.bind(app), 3000);
+        setTimeout(app.scan.bind(app), 2000);
     },
 
     // start scanning for devices
@@ -92,7 +106,7 @@ var app = {
 
                 setTimeout(function() {
                     app.scan(central);
-                }, 2000);
+                }, 10000);
             });
         }, 2000);
     },
@@ -130,7 +144,7 @@ var app = {
                 // nothing to do
                 return peripherals;
             } else {
-                log('Information Updated.');
+                log('Device information updated.');
 
                 // is it expired?
                 if(peripherals[peripheral.name].expire <= Date.now()) {
@@ -171,14 +185,15 @@ var app = {
 
                 // on success connection / disconnect
                 function(response) {
+                    // set device status
                     peripherals[i].status = response.status;
-
-                    log(list[i].info.address + ': ' + response.status);
+                    // set device information
+                    peripherals[i].device = response.info;
 
                     // are we good?
                     if(index === max) {
                         // update device list
-                        self.updateDeviceList(peripherals);
+                        self.updatePeripheralList(peripherals);
                     }
                 }, 
 
@@ -218,9 +233,9 @@ var app = {
             var tpl = baseTpl;
 
             tpl = tpl
-            .replace('{{name}}', peripherals[i].info.name)
-            .replace('{{id}}', peripherals[i].address)
-            .replace('{{id}}', peripherals[i].address)
+            .replace('{{name}}', peripherals[i].info.address)
+            .replace('{{id}}', peripherals[i].info.address)
+            .replace('{{id}}', peripherals[i].info.address)
             .replace('{{status}}', peripherals[i].status);
 
             combined += tpl;
@@ -230,6 +245,57 @@ var app = {
         peripheralContainer.innerHTML = combined;
 
         return this;
+    },
+
+    // write data to peripheral
+    write : function(e) {
+        // prompt for message
+        var message = prompt('Enter your message: ');
+
+        // get the address
+        var address         = e.getAttribute('data-id');
+        // get the information
+        var information     = {};
+
+        // look for that id
+        for(var i in peripherals) {
+            // matched the id?
+            if(peripherals[i].info.address === address) {
+                // get the information
+                information = peripherals[i];
+
+                break;
+            }
+        }
+
+        // get the services
+        var services = information.device.services;
+        // look for our service
+        var service  = {};
+
+        for(var i in services) {
+            var uuid = services[i].uuid;
+
+            if(uuid === '1000') {
+                service = services[i];
+            }
+        }
+
+        // set request params
+        var param = {
+            'address'           : information.info.address,
+            'service'           : service.uuid,
+            'characteristic'    : service.characteristics[0].uuid,
+            'type'              : 'noResponse',
+            'value'             : message
+        };
+
+        // write to device
+        central.write(param, function(response) {
+            log(response);
+        }, function(response) {
+            log(response);
+        });
     },
 
     // object length helper

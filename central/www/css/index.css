@@ -61,7 +61,7 @@ body {
     border-radius: 5px;
     border: 3px solid #FFF;
     margin: 10px;
-    padding: 15px;
+    padding: 15px 5px;
 }
 .app .peripheral-container .peripheral .wrap { float: left; }
 .app .peripheral-container .peripheral .left.wrap { width: 30%; }

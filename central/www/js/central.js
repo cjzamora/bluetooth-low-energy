@@ -19,6 +19,9 @@ var BLECentral = function() {
         // log flag
         log : true,
 
+        // subscribe fn
+        subscribeFn : function() {},
+
         // debug fn
         debugFn : function() {},
 
@@ -101,6 +104,7 @@ var BLECentral = function() {
                 response.status = response.isConnected ? 'connected' : 'disconnected';
 
                 if(response.status === 'disconnected') {
+                    // close connection
                     bluetoothle.close(function(response) {
                         setTimeout(function() {
                             // let's connect
@@ -137,6 +141,40 @@ var BLECentral = function() {
                         message : 'Unable to connect to device.' 
                     });
                 }
+            }, param);
+        },
+
+        // initialize device disovery
+        initDiscover : function(address, callback) {
+            var self  = this;
+            var param = { 'address' : address };
+
+            // discover device information
+            bluetoothle.discover(function(response) {
+                callback.call(self, response);
+            }, function(response) {
+                callback.call(self, response);
+            }, param);
+        },
+
+        // initialize service subscription
+        initSubscribe : function(param, callback) {
+            var self = this;
+
+            bluetoothle.unsubscribe(function(response) {
+                bluetoothle.subscribe(function(response) {
+                    callback.call(self, response);
+                }, function(response) {
+                    callback.call(self, response);
+                }, param);
+            }, function(response) {
+                bluetoothle.subscribe(function(response) {
+                    callback.call(self, response);
+                }, function(response) {
+                    callback.call(self, response);
+                }, param);
+
+                callback.call(self, response);
             }, param);
         },
 
@@ -213,11 +251,10 @@ var BLECentral = function() {
         connect : function(address, successCallback, errorCallback) {
             // initialize connection
             this.initConnection(address, function(response) {
-                this.debug(response);
-
                 // received a status?
                 if(response.status) {
-                    return successCallback.call(this, response);
+                    // discover device
+                    initDiscover.call(this, response);
                 }
 
                 // received an error?
@@ -225,6 +262,92 @@ var BLECentral = function() {
                     return errorCallback.call(this, response);
                 }
             });
+
+            // initialize discover
+            var initDiscover = function(device) {
+                // initialize discover
+                this.initDiscover(address, function(response) {
+                    // discovered?
+                    if(response.status === 'discovered') {
+                        // set discovered data
+                        device.info = response;
+
+                        // subscribe
+                        initSubscribe.call(this, device);
+                    }
+
+                    // error?
+                    if(response.error) {
+                        return errorCallback.call(this, response);
+                    }
+                });
+            };
+
+            // initialize subscribe
+            var initSubscribe = function(device) {
+                // get the device services
+                var services = device.info.services;
+                var service  = {};
+
+                for(var i in services) {
+                    var uuid = services[i].uuid;
+
+                    if(uuid === '1000') {
+                        service = services[i];
+                    }
+                }
+
+                // set request params
+                var param = {
+                    'address'           : device.address,
+                    'service'           : service.uuid,
+                    'characteristic'    : service.characteristics[0].uuid
+                };
+
+                // initialize subscribe
+                this.initSubscribe(param, function(response) {
+                    this.debug(response);
+                    
+                    this.subscribeFn.call(this, response);
+
+                    successCallback.call(this, device);
+                });
+            };
+        },
+
+        // write to address
+        write : function(data, successCallback, errorCallback) {
+            var self    = this;
+            // convert to bytes
+            var bytes   = bluetoothle.stringToBytes(data.value);
+            // encode bytes
+            var encoded = bluetoothle.bytesToEncodedString(bytes);
+
+            // set data value
+            data.value = encoded;
+
+            // send write request
+            bluetoothle.write(function(response) {
+                // has response?
+                if(response.value) {
+                    // get the response value
+                    var returnEncoded = bluetoothle.encodedStringToBytes(response.value);
+                    // // get the bytes as string
+                    var returnString  = bluetoothle.bytesToString(returnEncoded);
+
+                    // replace raw encoded value
+                    response.value = returnString;
+                }
+
+                successCallback.call(self, response);
+            }, function(response) {
+                errorCallback.call(self, response);
+            }, data);
+        },
+
+        // read from address
+        read : function(address, message, successCallback, errorCallback) {
+
         },
 
         // debug helper
@@ -236,6 +359,13 @@ var BLECentral = function() {
             message = '[debug]: ' + message;
             this.log && console.log(message);
             this.log && this.debugFn.call(this, message);
+
+            return this;
+        },
+
+        // on subscribe
+        onSubscribe : function(callback) {
+            this.subscribeFn = callback;
 
             return this;
         },

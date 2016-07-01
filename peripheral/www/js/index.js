@@ -58,7 +58,7 @@ var app = {
         peripheral = BLEPeripheral();
 
         // init advertise
-        var advertise = setInterval(app.advertise.bind(app), 20000);
+        var advertise = setInterval(app.advertise.bind(app), 10000);
 
         // on debug
         peripheral.onDebug(function(message) {
@@ -68,8 +68,10 @@ var app = {
 
         // on peripheral callback
         peripheral.onInitPeripheral(function(response) {
-            // set central device
-            if(response.address) {
+            // if we are connected
+            if(response.status === 'connected') {
+                central = response;
+
                 // central device name set?
                 response.name = response.name ? response.name : response.address;
 
@@ -78,12 +80,31 @@ var app = {
 
                 // update central list
                 app.updateCentralList(central);
-            }
 
-            // if we are connected
-            if(response.status === 'connected') {
                 // stop advertising this device
                 clearInterval(advertise);
+
+                return;
+            }
+
+            // write request?
+            if(response.status === 'writeRequested') {
+                // get encoded data
+                var bytes  = bluetoothle.encodedStringToBytes(response.value);
+                // get the string
+                var string = bluetoothle.bytesToString(bytes);
+
+                log('Write: ' + string);
+
+                alert(string);
+            }
+
+            // subscription?
+            if(response.status === 'subscribed') {
+                // set subscription data
+                central.subscribe = response;
+
+                log(central.address + ' has been subscribed.');
             }
 
 
@@ -94,11 +115,16 @@ var app = {
                 // update list
                 app.updateCentralList(central);
 
+                // update status
+                app.updatePeripheralStatus({});
+
                 // restart interval
                 clearInterval(advertise);
 
                 // start interval
-                advertise = setInterval(app.advertise.bind(app), 20000);
+                advertise = setInterval(app.advertise.bind(app), 10000);
+
+                return;
             }
         });
     },
@@ -118,6 +144,24 @@ var app = {
             log('Error occur while advertising device: ' + response.message);
         });
     },  
+
+    notify : function() {
+        // set message
+        var message = prompt('Enter your message: ');
+
+        // set request params
+        var param = {
+            'address'           : central.address,
+            'service'           : central.subscribe.service,
+            'characteristic'    : central.subscribe.characteristic,
+            'value'             : message
+        };
+
+        // send notify request
+        peripheral.notify(param, function(response) {
+            console.log(response);
+        });
+    },
 
     // update central list
     updateCentralList: function(central) {
