@@ -1,0 +1,16 @@
+Custom Write Protocol:
+
+Write Request format:
+
+// Send Write Request
+Send     - [1, 255, 02, AB, E2, 33, 00]
+// Receive ACK
+Receive  - [1, 255, 1]
+// Send Message Chunk
+Send     - [1, 02, AB, E2, 33, 00, ...]
+// Receive ACK
+Receive  - [1, 255, 1]
+// Send Message Chunk
+Send     - [1, 02, AB, E2, 33, 00, ...]
+// Receive Write EOF
+Receive  - [1, 255, 0]

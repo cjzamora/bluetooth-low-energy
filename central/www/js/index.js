@@ -113,6 +113,8 @@ var app = {
 
     // handle scan results
     handleScan: function(peripheral) {
+        log('Device RSSI: ' + peripherals);
+
         peripheral.rssi = null;
 
         // peripheral exists?
@@ -179,6 +181,7 @@ var app = {
 
         // iterate on each peripherals
         for(var i in list) {
+            // connect to peripheral
             (function(i, list, peripherals) {
                 central.connect(
                 list[i].info.address, 

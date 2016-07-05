@@ -57,7 +57,9 @@ var BLECentral = function() {
                         if(response.requestLocation) {
                             callback.call(self, response);
                         }
-                    }, { request : true });
+                    }, function(response) {
+                        callback.call(self, response);
+                    });
                 } else {
                     callback.call(self, { 'requestLocation' : true });
                 }
