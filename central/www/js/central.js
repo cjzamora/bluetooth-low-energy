@@ -3,6 +3,9 @@ var BLECentral = function() {
         // scan timeout
         SCAN_TIMEOUT : 10000,
 
+        // maximum device RSSI
+        RSSI_MAX : -100,
+
         // scan definition
         scanParam : {
             'services'          : ['1000'],
@@ -17,13 +20,20 @@ var BLECentral = function() {
         scanInProgress : false,
 
         // log flag
-        log : true,
+        log : false,
 
         // subscribe fn
         subscribeFn : function() {},
 
         // debug fn
         debugFn : function() {},
+
+        // set deubg
+        setDebug : function(debug) {
+            this.log = typeof debug === 'boolean' ? debug : false;
+
+            return this;
+        },
 
         // init bluetooth
         initBluetooth: function(callback) {
@@ -179,6 +189,9 @@ var BLECentral = function() {
                 callback.call(self, response);
             }, param);
         },
+
+        // initialize device disconnect
+        initDisconnect : function(callback) {},
 
         // stop scanning
         stopScan : function(callback) {
@@ -350,6 +363,73 @@ var BLECentral = function() {
         // read from address
         read : function(address, message, successCallback, errorCallback) {
 
+        },
+
+        // write by chunks
+        writeByChunk : function(data, successCallback, errorCallback) {
+            // max packet size in bytes
+            var MAX_PACKET_SIZE = 20;
+            // get the total packet size
+            var size = this.byteLength(data.value);
+
+            // write id, can't think of any random id :p
+            var id      = Math.ceil(Math.random() * (9999 - 1000) + 1000);
+            // write action
+            var action  = 0x1;
+
+            // header
+            var header = ['---', action, id, size].join('');
+            // convert string to bytes
+            var bytes = bluetoothle.stringToBytes(data.value);
+            // calculate total iteration
+            var totalTransfer = bytes.length / header.length;
+
+            // iterate on total transfer iteration
+            for(var i = 1; i <= totalTransfer; i ++) {
+                // generate byte headers
+                var byteHeader = bluetoothle.stringToBytes(header);
+                // slice message
+                var message = bytes.slice((i - 1) * 10, i * 10);
+
+                // genearte final payload
+                var payload = new Uint8Array(20);
+
+                // fill header
+                payload.set(byteHeader, 0);
+                // fill message
+                payload.set(message, 10);
+
+                (function(payload, scope) {
+                    var copy = data;
+
+                    copy.value = bluetoothle.bytesToEncodedString(payload);
+
+                    scope.write(copy, function(response) {
+                        console.log(response);
+                    }, function(response) {
+
+                    });
+                })(payload, this);
+            }
+
+            console.log('Write total length in bytes: ' + size);
+            console.log('Max packet size: ' + MAX_PACKET_SIZE);
+        },
+
+        // calculate byte length
+        byteLength : function(string) {
+          // returns the byte length of an utf8 string
+          var s = string.length;
+
+          for (var i = string.length - 1; i >= 0; i --) {
+            var code = string.charCodeAt(i);
+
+            if (code > 0x7f && code <= 0x7ff) s++;
+            else if (code > 0x7ff && code <= 0xffff) s+=2;
+            if (code >= 0xDC00 && code <= 0xDFFF) i--; // trail surrogate
+          }
+
+          return s;
         },
 
         // debug helper

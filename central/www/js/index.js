@@ -57,6 +57,9 @@ var app = {
         // init ble central
         central = BLECentral();
 
+        // debug
+        central.setDebug(false);
+
         // on debug
         central.onDebug(function(message) {
             log(message);
@@ -64,6 +67,7 @@ var app = {
 
         // on subscribe notify
         central.onSubscribe(function(response) {
+            // notification from server?
             if(response.status === 'subscribedResult') {
                 // get encoded data
                 var bytes  = bluetoothle.encodedStringToBytes(response.value);
@@ -71,9 +75,18 @@ var app = {
                 var string = bluetoothle.bytesToString(bytes);
 
                 log('Notify: ' + string);
-
-                alert(string);
             }
+        });
+
+        message = [
+            '12345678901234567890',
+            '12345678911234567891'
+        ].join('');
+
+        data = { value : message };
+
+        central.writeByChunk(data, function() {
+
         });
 
         // start scanning for peripherals
@@ -88,6 +101,11 @@ var app = {
         central.scan(function(response) {
             // peripheral result?
             if(response.status === 'scanResult') {
+                // maximum rssi?
+                if(Math.abs(response.rssi) >= Math.abs(central.RSSI_MAX)) {
+                    log('Device too far away...');
+                }
+
                 // update peripherals
                 peripherals = self.handleScan(response);
             }
@@ -113,8 +131,6 @@ var app = {
 
     // handle scan results
     handleScan: function(peripheral) {
-        log('Device RSSI: ' + peripherals);
-
         peripheral.rssi = null;
 
         // peripheral exists?
@@ -284,6 +300,11 @@ var app = {
             }
         }
 
+        message = [
+            '12345678901234567890',
+            '12345678911234567891'
+        ].join('');
+
         // set request params
         var param = {
             'address'           : information.info.address,
@@ -294,10 +315,14 @@ var app = {
         };
 
         // write to device
-        central.write(param, function(response) {
-            log(response);
-        }, function(response) {
-            log(response);
+        // central.write(param, function(response) {
+        //     log(response);
+        // }, function(response) {
+        //     log(response);
+        // });
+
+        central.writeByChunk(param, function(response) {
+
         });
     },
 
