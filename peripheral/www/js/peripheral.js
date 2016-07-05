@@ -27,13 +27,20 @@ var BLEPeripheral = function() {
         },
 
         // log flag
-        log : true,
+        log : false,
 
         // init peripheral fn
         initPeripheralFn : function() {},
 
         // debug fn
         debugFn : function() {},
+
+        // set deubg
+        setDebug : function(debug) {
+            this.log = typeof debug === 'boolean' ? debug : false;
+
+            return this;
+        },
 
         // init bluetooth
         initBluetooth: function(callback) {

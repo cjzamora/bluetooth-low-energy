@@ -57,6 +57,9 @@ var app = {
         // init ble peripheral
         peripheral = BLEPeripheral();
 
+        // set debug
+        peripheral.setDebug(false);
+
         // init advertise
         var advertise = setInterval(app.advertise.bind(app), 10000);
 
@@ -68,8 +71,6 @@ var app = {
 
         // on peripheral callback
         peripheral.onInitPeripheral(function(response) {
-            log(response);
-
             // if we are connected
             if(response.status === 'connected') {
                 central = response;
@@ -97,8 +98,6 @@ var app = {
                 var string = bluetoothle.bytesToString(bytes);
 
                 log('Write: ' + string);
-
-                alert(string);
             }
 
             // subscription?
@@ -160,11 +159,13 @@ var app = {
         };
 
         // send notify request
-        peripheral.notify(param, function(response) {
-            log(response);
-        }, function(response) {
-            log(response);
-        });
+        for(var i = 0; i < 5; i ++) {
+            peripheral.notify(param, function(response) {
+                log(response);
+            }, function(response) {
+                log(response);
+            });
+        }
     },
 
     // update central list

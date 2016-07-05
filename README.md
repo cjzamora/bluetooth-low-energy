@@ -14,7 +14,7 @@ Install BLE Plugin:
 phonegap plugin add cordova-plugin-bluetoothle
 ```
 
-> **NOTE** The app needs run in an actual device for us to be able to utilize the device bluetooth and location service.
+> **NOTE** The app needs to run in an actual device for us to be able to utilize the device bluetooth and location service.
 
 The following commands will show you how to deploy it in real devices.
 
