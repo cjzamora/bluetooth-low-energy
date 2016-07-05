@@ -98,6 +98,7 @@ var app = {
                 var string = bluetoothle.bytesToString(bytes);
 
                 log('Write: ' + string);
+                log('Write Bytes: ' + bytes);
             }
 
             // subscription?

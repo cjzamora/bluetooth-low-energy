@@ -386,7 +386,9 @@ var BLECentral = function() {
             id = bluetoothle.stringToBytes(id.toString());
 
             // set -, action on header
-            header.set([0x2D, 0x1, id], 0);
+            header.set([0x2D, 0x1], 0);
+            // set the id bytes
+            header.set(id, 2);
 
             // calculate total transfer iteration
             var total   = Math.round(size / header.length);
@@ -409,8 +411,9 @@ var BLECentral = function() {
                 payload.set(slice, slice.length);
 
                 // encode message
-                payload = bluetoothle.bytesToEncodedString(payload);
+                payload = bluetoothle.bytesToString(payload);
 
+                // write the payload
                 self.write({
                     address         : data.address,
                     characteristic  : data.characteristic,
@@ -418,6 +421,7 @@ var BLECentral = function() {
                     type            : 'noResponse',
                     value           : payload
                 }, function(response) {
+                    // EOF?
                     if(total == ++written) {
                         // write eof
                         var eof = new Uint32Array(6);
@@ -426,7 +430,7 @@ var BLECentral = function() {
                         eof.set([0x2D, 0x0, id], 0);
 
                         // encode eof header
-                        eof = bluetoothle.bytesToEncodedString(eof);
+                        eof = bluetoothle.bytesToString(eof);
 
                         // write eof
                         self.write({
@@ -452,7 +456,7 @@ var BLECentral = function() {
                     // clear interval
                     clearInterval(interval);
                 });
-            }, 100);
+            }, 80);
         },
 
         // calculate byte length

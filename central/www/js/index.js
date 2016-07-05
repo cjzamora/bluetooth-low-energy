@@ -312,6 +312,8 @@ var app = {
 
         central.writeByChunk(param, function(response) {
 
+        }, function(response) {
+            
         });
     },
 
