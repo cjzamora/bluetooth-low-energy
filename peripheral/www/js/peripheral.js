@@ -60,10 +60,6 @@ var BLEPeripheral = function() {
         // init location
         initLocation: function() {
             var self  = this;
-            var param = { 
-                'request'     : true, 
-                'restoreKey'  : 'bleplugin' 
-            };
 
             // is location enabled?
             bluetoothle.isLocationEnabled(function(response) {
@@ -75,7 +71,9 @@ var BLEPeripheral = function() {
                         if(response.requestLocation) {
                             callback.call(self, response);
                         }
-                    }, param);
+                    }, function(response) {
+                        callback.call(self, response);
+                    });
                 } else {
                     callback.call(self, { 'requestLocation' : true });
                 }

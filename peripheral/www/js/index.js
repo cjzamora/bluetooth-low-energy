@@ -68,6 +68,8 @@ var app = {
 
         // on peripheral callback
         peripheral.onInitPeripheral(function(response) {
+            log(response);
+
             // if we are connected
             if(response.status === 'connected') {
                 central = response;
@@ -159,7 +161,9 @@ var app = {
 
         // send notify request
         peripheral.notify(param, function(response) {
-            console.log(response);
+            log(response);
+        }, function(response) {
+            log(response);
         });
     },
 
