@@ -78,17 +78,6 @@ var app = {
             }
         });
 
-        message = [
-            '12345678901234567890',
-            '12345678911234567891'
-        ].join('');
-
-        data = { value : message };
-
-        central.writeByChunk(data, function() {
-
-        });
-
         // start scanning for peripherals
         setTimeout(app.scan.bind(app), 2000);
     },
