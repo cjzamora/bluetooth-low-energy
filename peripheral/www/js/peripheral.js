@@ -108,6 +108,7 @@ var BLEPeripheral = function() {
                     // defer callback and handle write
                     return self.handleChunkWrite.call(self, response);
                 }
+
                 // call callback fn
                 self.initPeripheralFn.call(self, response);
 
@@ -317,23 +318,40 @@ var BLEPeripheral = function() {
                 // encode string to bytes
                 var encodedBytes = bluetoothle.stringToBytes(this.writeBuffer[writeId].value.join(''));
                 // encode bytes to encoded string
-                var encodedString = bluetoothle.bytesToString(encodedBytes);
+                var encodedString = bluetoothle.bytesToEncodedString(encodedBytes);
 
                 // update response value
                 data.value = encodedString;
                 // set chunk write flag
                 data.chunk = true;
 
+                this.debug(this.byteLength(this.writeBuffer[writeId].value.join('')) + ' byte(s) of data received with write id ' + writeId);
+                
                 // flush buffer by id
                 delete this.writeBuffer[writeId];
 
-                this.debug(data);
-
-                return;
+                // invoke defered callback
+                return this.initPeripheralFn.call(this, data);
             }
 
             // push data
-            this.writeBuffer[writeId].value.push(writeData.replace(/\\u0000/g, ''));
+            this.writeBuffer[writeId].value.push(writeData.replace(/\u0000/g, ''));
+        },
+
+        // calculate byte length
+        byteLength : function(string) {
+            // returns the byte length of an utf8 string
+            var s = string.length;
+
+            for (var i = string.length - 1; i >= 0; i --) {
+                var code = string.charCodeAt(i);
+
+                if (code > 0x7f && code <= 0x7ff) s++;
+                else if (code > 0x7ff && code <= 0xffff) s+=2;
+                if (code >= 0xDC00 && code <= 0xDFFF) i--; // trail surrogate
+            }
+
+            return s;
         },
 
         // debug helper

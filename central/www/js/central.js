@@ -371,10 +371,12 @@ var BLECentral = function() {
         writeByChunk : function(data, successCallback, errorCallback) {
             // maximum packet size
             var MAX_PACKET_SIZE = 20;
+            // max message chunk size
+            var MAX_CHUNK_SIZE  = 10;
             // get the total packet size
-            var size = this.byteLength(data.value);
+            var size            = this.byteLength(data.value);
             // convert the message
-            var message = bluetoothle.stringToBytes(data.value);
+            var message         = bluetoothle.stringToBytes(data.value);
 
             // write id, can't think of any random id :p
             var id      = this.generateUid();
@@ -393,27 +395,35 @@ var BLECentral = function() {
             header.set(id, 2);
 
             // calculate total transfer iteration
-            var total   = Math.round(size / header.length);
+            var total   = Math.ceil(size / MAX_CHUNK_SIZE);
             // total written
             var written = 0;
 
             // we need to know the scope
             var self = this;
 
+            this.debug('Writting ' + size + ' byte(s) of data.');
+
             // set the write interval
             var interval = setInterval(function() {
                 // initialize payload
                 var payload = new Uint32Array(20);
                 // chop message
-                var slice   = message.slice(written * total, (written + 1) * total);
+                var slice   = message.slice(written * MAX_CHUNK_SIZE, (written + 1) * MAX_CHUNK_SIZE);
 
-                // set payload header
-                payload.set(header, 0);
-                // set the message
-                payload.set(slice, slice.length + 1);
+                try {
+                    // set payload header
+                    payload.set(header, 0);
+                    // set the message
+                    payload.set(slice, slice.length);
 
-                // encode message
-                payload = bluetoothle.bytesToString(payload);
+                    // encode message
+                    payload = bluetoothle.bytesToString(payload);
+                } catch(e) {
+                    self.debug('Unable to write chunks.');
+
+                    clearInterval(interval);
+                }
 
                 // write the payload
                 self.write({
@@ -431,6 +441,7 @@ var BLECentral = function() {
                         // update header
                         header[1] = 0x0;
 
+                        // set header
                         eof.set(header, 0);
 
                         // encode eof header
@@ -451,6 +462,9 @@ var BLECentral = function() {
                             errorCallback.call(self, response);
                         });
 
+                        // debug
+                        self.debug(size + ' byte(s) of data written with write id ' + bluetoothle.bytesToString(id));
+
                         clearInterval(interval);
                     }
                 }, function(response) {
@@ -465,18 +479,18 @@ var BLECentral = function() {
 
         // calculate byte length
         byteLength : function(string) {
-          // returns the byte length of an utf8 string
-          var s = string.length;
+            // returns the byte length of an utf8 string
+            var s = string.length;
 
-          for (var i = string.length - 1; i >= 0; i --) {
-            var code = string.charCodeAt(i);
+            for (var i = string.length - 1; i >= 0; i --) {
+                var code = string.charCodeAt(i);
 
-            if (code > 0x7f && code <= 0x7ff) s++;
-            else if (code > 0x7ff && code <= 0xffff) s+=2;
-            if (code >= 0xDC00 && code <= 0xDFFF) i--; // trail surrogate
-          }
+                if (code > 0x7f && code <= 0x7ff) s++;
+                else if (code > 0x7ff && code <= 0xffff) s+=2;
+                if (code >= 0xDC00 && code <= 0xDFFF) i--; // trail surrogate
+            }
 
-          return s;
+            return s;
         },
 
         // generate basic uid
