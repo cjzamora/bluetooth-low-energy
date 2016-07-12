@@ -58,7 +58,7 @@ var app = {
         central = BLECentral();
 
         // debug
-        central.setDebug(false);
+        central.setDebug(true);
 
         // on debug
         central.onDebug(function(message) {
@@ -291,7 +291,8 @@ var app = {
 
         message = [
             '12345678901234567890',
-            '12345678911234567891'
+            '12345678911234567891',
+            '12345678921234567892'
         ].join('');
 
         // set request params

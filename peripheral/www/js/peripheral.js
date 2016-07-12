@@ -26,6 +26,9 @@ var BLEPeripheral = function() {
             ]
         },
 
+        // write buffer
+        writeBuffer : {},
+
         // log flag
         log : false,
 
@@ -99,6 +102,12 @@ var BLEPeripheral = function() {
 
             // initialize peripherial
             bluetoothle.initializePeripheral(function(response) {
+                // write chunk?
+                if(response.status === 'writeRequested'
+                && response.value.indexOf('LQ') === 0) {
+                    // defer callback and handle write
+                    return self.handleChunkWrite.call(self, response);
+                }
                 // call callback fn
                 self.initPeripheralFn.call(self, response);
 
@@ -276,6 +285,55 @@ var BLEPeripheral = function() {
             }, function(response) {
                 errorCallback.call(self, response);
             }, data);
+        },
+
+        // handle write chunk and defer write callback
+        handleChunkWrite : function(data) {
+            // decode string to bytes
+            var decodedBytes    = bluetoothle.encodedStringToBytes(data.value);
+            // decode bytes to string
+            var decodedString   = bluetoothle.bytesToString(decodedBytes);
+
+            // get the write prefix
+            var writePrefix  = decodedString.substring(0, 1);
+            // get the write id
+            var writeId      = decodedString.substring(2, 6);
+            // get the write action
+            var writeAction  = decodedBytes[1];
+            // get the write data
+            var writeData    = decodedString.substring(6);
+
+            // data buffer exists?
+            if(!(writeId in this.writeBuffer)) {
+                // set write buffer settings
+                this.writeBuffer[writeId] = {
+                    timeout : Date.now() + 5000,
+                    value   : []
+                };
+            }
+
+            // write eof?
+            if(!writeAction) {
+                // encode string to bytes
+                var encodedBytes = bluetoothle.stringToBytes(this.writeBuffer[writeId].value.join(''));
+                // encode bytes to encoded string
+                var encodedString = bluetoothle.bytesToString(encodedBytes);
+
+                // update response value
+                data.value = encodedString;
+                // set chunk write flag
+                data.chunk = true;
+
+                // flush buffer by id
+                delete this.writeBuffer[writeId];
+
+                this.debug(data);
+
+                return;
+            }
+
+            // push data
+            this.writeBuffer[writeId].value.push(writeData.replace(/\\u0000/g, ''));
         },
 
         // debug helper

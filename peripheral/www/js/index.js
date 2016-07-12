@@ -58,10 +58,10 @@ var app = {
         peripheral = BLEPeripheral();
 
         // set debug
-        peripheral.setDebug(false);
+        peripheral.setDebug(true);
 
         // init advertise
-        var advertise = setInterval(app.advertise.bind(app), 10000);
+        var advertise = setInterval(app.advertise.bind(app), 5000);
 
         // on debug
         peripheral.onDebug(function(message) {

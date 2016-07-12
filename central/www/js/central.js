@@ -266,6 +266,8 @@ var BLECentral = function() {
         connect : function(address, successCallback, errorCallback) {
             // initialize connection
             this.initConnection(address, function(response) {
+                this.debug(response);
+
                 // received a status?
                 if(response.status) {
                     // discover device
@@ -401,14 +403,14 @@ var BLECentral = function() {
             // set the write interval
             var interval = setInterval(function() {
                 // initialize payload
-                var payload = new Uint32Array(14);
+                var payload = new Uint32Array(20);
                 // chop message
                 var slice   = message.slice(written * total, (written + 1) * total);
 
                 // set payload header
                 payload.set(header, 0);
                 // set the message
-                payload.set(slice, slice.length);
+                payload.set(slice, slice.length + 1);
 
                 // encode message
                 payload = bluetoothle.bytesToString(payload);
@@ -424,10 +426,12 @@ var BLECentral = function() {
                     // EOF?
                     if(total == ++written) {
                         // write eof
-                        var eof = new Uint32Array(6);
+                        var eof = new Uint32Array(20);
 
-                        // set eof data
-                        eof.set([0x2D, 0x0, id], 0);
+                        // update header
+                        header[1] = 0x0;
+
+                        eof.set(header, 0);
 
                         // encode eof header
                         eof = bluetoothle.bytesToString(eof);
