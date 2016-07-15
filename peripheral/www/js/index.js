@@ -61,7 +61,7 @@ var app = {
         peripheral.setDebug(true);
 
         // init advertise
-        var advertise = setInterval(app.advertise.bind(app), 5000);
+        var advertise = setInterval(app.advertise.bind(app), 15000);
 
         // on debug
         peripheral.onDebug(function(message) {
@@ -151,6 +151,13 @@ var app = {
         // set message
         var message = prompt('Enter your message: ');
 
+        message = [
+            '12345678901234567890',
+            '12345678901234567890',
+            '12345678901234567890',
+            '12345678901234567890'
+        ].join('');
+
         // set request params
         var param = {
             'address'           : central.address,
@@ -159,14 +166,11 @@ var app = {
             'value'             : message
         };
 
-        // send notify request
-        for(var i = 0; i < 5; i ++) {
-            peripheral.notify(param, function(response) {
-                log(response);
-            }, function(response) {
-                log(response);
-            });
-        }
+        peripheral.notifyByChunk(param, function(response) {
+            console.log(response);
+        }, function(response) {
+            console.log(response);
+        });
     },
 
     // update central list

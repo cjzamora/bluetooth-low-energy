@@ -16,6 +16,9 @@ var BLECentral = function() {
             'callbackType'      : bluetoothle.CALLBACK_TYPE_ALL_MATCHES
         },
 
+        // write buffer
+        writeBuffer : {},
+
         // scan in progress?
         scanInProgress : false,
 
@@ -323,7 +326,13 @@ var BLECentral = function() {
 
                 // initialize subscribe
                 this.initSubscribe(param, function(response) {
-                    this.debug(response);
+                    // subscribe result by chunk?
+                    // write chunk?
+                    if(response.status === 'subscribedResult'
+                    && response.value.indexOf('LQ') === 0) {
+                        // defer callback and handle write
+                        return this.handleChunkNotify.call(this, response);
+                    }
                     
                     this.subscribeFn.call(this, response);
 
@@ -475,6 +484,56 @@ var BLECentral = function() {
                     clearInterval(interval);
                 });
             }, 80);
+        },
+
+        // handle notify chunk and defer write callback
+        handleChunkNotify : function(data) {
+            // decode string to bytes
+            var decodedBytes    = bluetoothle.encodedStringToBytes(data.value);
+            // decode bytes to string
+            var decodedString   = bluetoothle.bytesToString(decodedBytes);
+
+            // get the write prefix
+            var writePrefix  = decodedString.substring(0, 1);
+            // get the write id
+            var writeId      = decodedString.substring(2, 6);
+            // get the write action
+            var writeAction  = decodedBytes[1];
+            // get the write data
+            var writeData    = decodedString.substring(6);
+
+            // data buffer exists?
+            if(!(writeId in this.writeBuffer)) {
+                // set write buffer settings
+                this.writeBuffer[writeId] = {
+                    timeout : Date.now() + 5000,
+                    value   : []
+                };
+            }
+
+            // write eof?
+            if(!writeAction) {
+                // encode string to bytes
+                var encodedBytes = bluetoothle.stringToBytes(this.writeBuffer[writeId].value.join(''));
+                // encode bytes to encoded string
+                var encodedString = bluetoothle.bytesToEncodedString(encodedBytes);
+
+                // update response value
+                data.value = encodedString;
+                // set chunk write flag
+                data.chunk = true;
+
+                this.debug(this.byteLength(this.writeBuffer[writeId].value.join('')) + ' byte(s) of data received with write id ' + writeId);
+                
+                // flush buffer by id
+                delete this.writeBuffer[writeId];
+
+                // invoke defered callback
+                return this.subscribeFn.call(this, data);
+            }
+
+            // push data
+            this.writeBuffer[writeId].value.push(writeData.replace(/\u0000/g, ''));
         },
 
         // calculate byte length

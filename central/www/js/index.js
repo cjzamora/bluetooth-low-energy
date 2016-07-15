@@ -75,6 +75,7 @@ var app = {
                 var string = bluetoothle.bytesToString(bytes);
 
                 log('Notify: ' + string);
+                log('Notify Bytes: ' + bytes);
             }
         });
 

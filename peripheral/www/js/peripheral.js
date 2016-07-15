@@ -282,10 +282,131 @@ var BLEPeripheral = function() {
 
             // send notify request
             bluetoothle.notify(function(response) {
+                // has response?
+                if(response.value) {
+                    // get the response value
+                    var returnEncoded = bluetoothle.encodedStringToBytes(response.value);
+                    // // get the bytes as string
+                    var returnString  = bluetoothle.bytesToString(returnEncoded);
+
+                    // replace raw encoded value
+                    response.value = returnString;
+                }
+
                 successCallback.call(self, response);
             }, function(response) {
                 errorCallback.call(self, response);
             }, data);
+
+            successCallback.call(self, { notified : true, sent : true });
+        },
+
+        // notify by chunks
+        notifyByChunk : function(data, successCallback, errorCallback) {
+            // maximum packet size
+            var MAX_PACKET_SIZE = 20;
+            // max message chunk size
+            var MAX_CHUNK_SIZE  = 10;
+            // get the total packet size
+            var size            = this.byteLength(data.value);
+            // convert the message
+            var message         = bluetoothle.stringToBytes(data.value);
+
+            // write id, can't think of any random id :p
+            var id      = this.generateUid();
+            // write action
+            var action  = 0x1;
+
+            // create header
+            var header = new Uint32Array(6);
+
+            // convert id to bytes
+            id = bluetoothle.stringToBytes(id.toString());
+
+            // set -, action on header
+            header.set([0x2D, 0x1], 0);
+            // set the id bytes
+            header.set(id, 2);
+
+            // calculate total transfer iteration
+            var total   = Math.ceil(size / MAX_CHUNK_SIZE);
+            // total written
+            var written = 0;
+
+            // we need to know the scope
+            var self = this;
+
+            this.debug('Writting ' + size + ' byte(s) of data.');
+
+            // set the write interval
+            var interval = setInterval(function() {
+                // initialize payload
+                var payload = new Uint32Array(20);
+                // chop message
+                var slice   = message.slice(written * MAX_CHUNK_SIZE, (written + 1) * MAX_CHUNK_SIZE);
+
+                try {
+                    // set payload header
+                    payload.set(header, 0);
+                    // set the message
+                    payload.set(slice, slice.length);
+
+                    // encode message
+                    payload = bluetoothle.bytesToString(payload);
+                } catch(e) {
+                    self.debug('Unable to write chunks.');
+
+                    clearInterval(interval);
+                }
+
+                // notify the payload
+                self.notify({
+                    address         : data.address,
+                    characteristic  : data.characteristic,
+                    service         : data.service,
+                    value           : payload
+                }, function(response) {
+                    // EOF?
+                    if(total == ++written) {
+                        // write eof
+                        var eof = new Uint32Array(20);
+
+                        // update header
+                        header[1] = 0x0;
+
+                        // set header
+                        eof.set(header, 0);
+
+                        // encode eof header
+                        eof = bluetoothle.bytesToString(eof);
+
+                        // notify eof
+                        self.notify({
+                            address         : data.address,
+                            characteristic  : data.characteristic,
+                            service         : data.service,
+                            value           : eof
+                        }, function(response) {
+                            // call success callback
+                            successCallback.call(self, { 'eof' : true });
+                        }, function(response) {
+                            // error callback
+                            errorCallback.call(self, response);
+                        });
+
+                        // debug
+                        self.debug(size + ' byte(s) of data written with write id ' + bluetoothle.bytesToString(id));
+
+                        clearInterval(interval);
+                    }
+                }, function(response) {
+                    // error callback
+                    errorCallback.call(self, response);
+
+                    // clear interval
+                    clearInterval(interval);
+                });
+            }, 80);
         },
 
         // handle write chunk and defer write callback
@@ -352,6 +473,11 @@ var BLEPeripheral = function() {
             }
 
             return s;
+        },
+
+        // generate basic uid
+        generateUid : function() {
+            return ("0000" + (Math.random() * Math.pow(36,4) << 0).toString(36)).slice(-4);
         },
 
         // debug helper
